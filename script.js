@@ -1,8 +1,9 @@
+// Replace with your actual OAuth Client ID
 const CLIENT_ID = "319595032979-7ss0k66t63eap95qfjqaluucjq2lpb37.apps.googleusercontent.com";
 const SCOPES = "https://www.googleapis.com/auth/drive.file";
 
-let tokenClient;
 let accessToken = null;
+let tokenClient = null;
 
 // UI helpers
 function updateStatus(msg) {
@@ -27,7 +28,7 @@ function gapiLoaded() {
   });
 }
 
-// Initialize Google Identity Services
+// Initialize GIS for OAuth popup
 function initGIS() {
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
@@ -39,15 +40,15 @@ function initGIS() {
       }
       accessToken = resp.access_token;
       updateStatus("Signed in with Google Drive!");
-    },
+    }
   });
 
   document.getElementById("loginBtn").onclick = () => {
-    tokenClient.requestAccessToken({ prompt: "" });
+    tokenClient.requestAccessToken({ prompt: "consent" });
   };
 }
 
-// Upload a single file
+// Upload a single file to Drive
 function uploadFile(file) {
   return new Promise((resolve, reject) => {
     if (!accessToken) return reject("Not signed in");
