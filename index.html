@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Google Drive Uploader</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <h1>Upload Files to Google Drive</h1>
+  <button id="loginBtn">Sign in with Google</button>
+  <br>
+  <input type="file" id="fileInput" multiple>
+  <br>
+  <button id="uploadBtn">Upload to Drive</button>
+  <div id="progressContainer">
+    <div id="progressBar">0%</div>
+  </div>
+  <p id="status"></p>
+</body>
+</html>
