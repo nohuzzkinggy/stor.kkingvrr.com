@@ -4,52 +4,54 @@ const SCOPES = "https://www.googleapis.com/auth/drive.file";
 let tokenClient;
 let accessToken = null;
 
+// UI helpers
 function updateStatus(msg) {
-    document.getElementById("status").innerText = msg;
+  document.getElementById("status").innerText = msg;
 }
-
 function updateProgress(percent) {
-    const container = document.getElementById("progressContainer");
-    const bar = document.getElementById("progressBar");
-    container.style.display = "block";
-    bar.style.width = percent + "%";
-    bar.innerText = percent + "%";
+  const container = document.getElementById("progressContainer");
+  const bar = document.getElementById("progressBar");
+  container.style.display = "block";
+  bar.style.width = percent + "%";
+  bar.innerText = percent + "%";
 }
 
-// Load the Google API client library
+// Load Google API client
 function gapiLoaded() {
-    gapi.load("client", initializeGapiClient);
-}
-
-async function initializeGapiClient() {
+  gapi.load("client", async () => {
     await gapi.client.init({
-        apiKey: "", // optional for Drive uploads
-        discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"]
+      discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"]
     });
-    updateStatus("Google API client loaded.");
+    updateStatus("Google API loaded.");
+    initGIS();
+  });
 }
 
-// Initialize the token client for OAuth
-function gisLoaded() {
-    tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-        callback: (response) => {
-            if (response.error) {
-                updateStatus("Error: " + response.error);
-                return;
-            }
-            accessToken = response.access_token;
-            updateStatus("Signed in with Google Drive!");
-        },
-    });
+// Initialize Google Identity Services
+function initGIS() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (resp) => {
+      if (resp.error) {
+        updateStatus("Error: " + resp.error);
+        return;
+      }
+      accessToken = resp.access_token;
+      updateStatus("Signed in with Google Drive!");
+    },
+  });
 
-    document.getElementById("loginBtn").onclick = () => {
-        tokenClient.requestAccessToken();
-    };
+  document.getElementById("loginBtn").onclick = () => {
+    tokenClient.requestAccessToken({ prompt: "" });
+  };
 }
 
-async function uploadFile(file) {
+// Upload a single file
+function uploadFile(file) {
+  return new Promise((resolve, reject) => {
+    if (!accessToken) return reject("Not signed in");
+
     const metadata = { name: file.name, mimeType: file.type };
     const form = new FormData();
     form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
@@ -60,39 +62,41 @@ async function uploadFile(file) {
     xhr.setRequestHeader("Authorization", "Bearer " + accessToken);
 
     xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-            const percentComplete = Math.round((e.loaded / e.total) * 100);
-            updateProgress(percentComplete);
-        }
+      if (e.lengthComputable) {
+        const percentComplete = Math.round((e.loaded / e.total) * 100);
+        updateProgress(percentComplete);
+      }
     };
 
-    return new Promise((resolve, reject) => {
-        xhr.onload = () => (xhr.status === 200 ? resolve(JSON.parse(xhr.responseText)) : reject(xhr.responseText));
-        xhr.onerror = () => reject(xhr.responseText);
-        xhr.send(form);
-    });
+    xhr.onload = () => (xhr.status === 200 ? resolve(JSON.parse(xhr.responseText)) : reject(xhr.responseText));
+    xhr.onerror = () => reject(xhr.responseText);
+
+    xhr.send(form);
+  });
 }
 
+// Upload button handler
 document.getElementById("uploadBtn").addEventListener("click", async () => {
-    if (!accessToken) {
-        updateStatus("Please sign in first!");
-        return;
-    }
+  if (!accessToken) {
+    updateStatus("Please sign in first!");
+    return;
+  }
 
-    const files = document.getElementById("fileInput").files;
-    if (!files.length) {
-        updateStatus("Select a file to upload.");
-        return;
-    }
+  const files = document.getElementById("fileInput").files;
+  if (!files.length) {
+    updateStatus("Select a file to upload.");
+    return;
+  }
 
-    for (let file of files) {
-        try {
-            await uploadFile(file);
-            updateStatus(`Uploaded ${file.name}`);
-        } catch (err) {
-            updateStatus(`Error uploading ${file.name}: ${err}`);
-        }
+  updateStatus("Uploading...");
+  for (let file of files) {
+    try {
+      await uploadFile(file);
+      updateStatus(`Uploaded ${file.name}`);
+    } catch (err) {
+      updateStatus(`Error uploading ${file.name}: ${err}`);
     }
-    updateProgress(100);
-    updateStatus("All uploads complete!");
+  }
+  updateProgress(100);
+  updateStatus("All uploads complete!");
 });
